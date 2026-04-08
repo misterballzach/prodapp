@@ -265,13 +265,34 @@ body {
     color: var(--text-muted);
 }
 
+.task-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
 .task-category-badge {
     font-size: 0.75rem;
     padding: 2px 8px;
     border-radius: 12px;
     color: white;
     align-self: flex-start;
-    margin-top: 5px;
+}
+
+.task-priority-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background-color: #faad14;
+    color: white;
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.task-priority-badge.high-priority {
+    background-color: #f5222d;
 }
 
 .delete-task-btn {

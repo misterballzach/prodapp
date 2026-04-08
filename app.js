@@ -1,17 +1,20 @@
+// Make state global for easier testing/verification
+window.appState = {
+    currentDate: new Date(),
+    selectedDate: new Date(),
+    selectedCategory: 'all',
+    categories: [
+        { id: 'all', name: 'All Categories', color: '#888888' },
+        { id: 'work', name: 'Work', color: '#ff4d4f' },
+        { id: 'personal', name: 'Personal', color: '#52c41a' },
+        { id: 'health', name: 'Health', color: '#1890ff' }
+    ],
+    tasks: [] // Array of task objects: { id, title, categoryId, date (YYYY-MM-DD), completed }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
-    const state = {
-        currentDate: new Date(),
-        selectedDate: new Date(),
-        selectedCategory: 'all',
-        categories: [
-            { id: 'all', name: 'All Categories', color: '#888888' },
-            { id: 'work', name: 'Work', color: '#ff4d4f' },
-            { id: 'personal', name: 'Personal', color: '#52c41a' },
-            { id: 'health', name: 'Health', color: '#1890ff' }
-        ],
-        tasks: [] // Array of task objects: { id, title, categoryId, date (YYYY-MM-DD), completed }
-    };
+    const state = window.appState;
 
     // Normalize date to YYYY-MM-DD
     const formatDate = (date) => {
@@ -139,11 +142,65 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // --- Task Rollover Logic ---
+    const checkAndRolloverTasks = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize today to midnight
+        const todayStr = formatDate(today);
+
+        // Find tasks that are incomplete and from a date before today
+        const overdueTasks = state.tasks.filter(task => {
+            if (task.completed) return false;
+            const taskDate = new Date(task.date + 'T00:00:00'); // Parse YYYY-MM-DD
+            return taskDate < today;
+        });
+
+        overdueTasks.forEach(task => {
+            // Check if this task has already been rolled over to today
+            const alreadyRolledOver = state.tasks.some(t =>
+                t.title.toLowerCase() === task.title.toLowerCase() &&
+                t.categoryId === task.categoryId &&
+                t.date === todayStr
+            );
+
+            if (!alreadyRolledOver) {
+                const taskDate = new Date(task.date + 'T00:00:00');
+                // Calculate days overdue
+                const diffTime = Math.abs(today - taskDate);
+                const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                // Base priority is 0, add 1 for every day overdue
+                const newPriority = (task.priority || 0) + daysOverdue;
+
+                const rolledOverTask = {
+                    id: Date.now().toString() + Math.random().toString(36).substring(7),
+                    title: task.title,
+                    categoryId: task.categoryId,
+                    date: todayStr,
+                    completed: false,
+                    priority: newPriority,
+                    isRollover: true,
+                    daysOverdue: daysOverdue
+                };
+
+                state.tasks.push(rolledOverTask);
+                // Mark original task as completed so it doesn't keep rolling over,
+                // OR delete it. Marking as completed to preserve history.
+                task.completed = true;
+                task.rolloverStatus = 'rolled-over'; // Add a flag to indicate why it's completed
+            }
+        });
+    };
+
     // --- Task Logic ---
     const toggleTaskCompletion = (title, completed) => {
         // Sync across all categories for tasks with the same title
         state.tasks.forEach(task => {
             if (task.title.toLowerCase() === title.toLowerCase()) {
+                // Don't uncheck past rolled-over tasks that were auto-completed by the rollover system
+                if (completed === false && task.rolloverStatus === 'rolled-over') {
+                    return;
+                }
                 task.completed = completed;
             }
         });
@@ -161,10 +218,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const selectedDateStr = formatDate(state.selectedDate);
 
-        const filteredTasks = state.tasks.filter(task => {
+        let filteredTasks = state.tasks.filter(task => {
             const matchesDate = task.date === selectedDateStr;
             const matchesCategory = state.selectedCategory === 'all' || task.categoryId === state.selectedCategory;
             return matchesDate && matchesCategory;
+        });
+
+        // Sort tasks: incomplete first, then by priority (descending)
+        filteredTasks.sort((a, b) => {
+            if (a.completed !== b.completed) {
+                return a.completed ? 1 : -1;
+            }
+            return (b.priority || 0) - (a.priority || 0);
         });
 
         if (filteredTasks.length === 0) {
@@ -191,13 +256,35 @@ document.addEventListener('DOMContentLoaded', () => {
             titleSpan.className = 'task-title';
             titleSpan.textContent = task.title; // Safe text insertion
 
+            const badgesContainer = document.createElement('div');
+            badgesContainer.className = 'task-badges';
+
             const badgeSpan = document.createElement('span');
             badgeSpan.className = 'task-category-badge';
             badgeSpan.style.backgroundColor = category.color;
             badgeSpan.textContent = category.name;
 
+            badgesContainer.appendChild(badgeSpan);
+
+            // Add priority/overdue badge if applicable
+            if (task.priority > 0 && !task.completed) {
+                const priorityBadge = document.createElement('span');
+                priorityBadge.className = 'task-priority-badge';
+                if (task.priority > 3) priorityBadge.classList.add('high-priority');
+
+                const icon = document.createElement('span');
+                icon.innerHTML = '&#9888;'; // Warning icon
+
+                const text = document.createElement('span');
+                text.textContent = `Priority: ${task.priority} (${task.daysOverdue}d overdue)`;
+
+                priorityBadge.appendChild(icon);
+                priorityBadge.appendChild(text);
+                badgesContainer.appendChild(priorityBadge);
+            }
+
             contentDiv.appendChild(titleSpan);
-            contentDiv.appendChild(badgeSpan);
+            contentDiv.appendChild(badgesContainer);
 
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-task-btn';
@@ -235,7 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
             title: title,
             categoryId: categoryId,
             date: dateStr,
-            completed: isCompleted
+            completed: isCompleted,
+            priority: 0 // Default priority
         };
 
         state.tasks.push(newTask);
@@ -251,8 +339,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initialization ---
+    checkAndRolloverTasks();
     renderCategories();
     updateDateDisplay();
     renderCalendar();
     renderTasks();
+
+    // Expose functions globally for testing script
+    window.renderTasks = renderTasks;
+    window.renderCalendar = renderCalendar;
+    window.checkAndRolloverTasks = checkAndRolloverTasks;
 });
