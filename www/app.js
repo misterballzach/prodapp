@@ -531,13 +531,13 @@ document.addEventListener('DOMContentLoaded', () => {
         isAiLoading = true;
         elements.aiStatus.classList.remove('hidden');
         elements.runAiBtn.disabled = true;
-        elements.aiStatusText.innerText = "Downloading Max Power Local AI (~1.2GB)... This only happens once.";
+        elements.aiStatusText.innerText = "Downloading Advanced Local AI (~350MB)... This only happens once.";
         elements.aiProgress.style.width = "0%";
 
         try {
-            // Upgrading to the most powerful JS-capable instruct model (Qwen 1.5 1.8B Chat) for state-of-the-art browser reasoning.
-            // Pushing beyond ~2GB usually triggers OOM errors on mobile devices via WASM. 1.8B parameter is the sweet spot for maximum power.
-            aiGenerator = await pipeline('text-generation', 'Xenova/Qwen1.5-1.8B-Chat', {
+            // 1.8B caused OOM crashes on the user's device.
+            // Qwen 1.5 0.5B Chat is the most powerful model that reliably fits in WASM memory across all mobile/desktop devices without crashing.
+            aiGenerator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat', {
                 progress_callback: (info) => {
                     if (info.status === 'progress') {
                         const progress = (info.loaded / info.total) * 100 || 0;
