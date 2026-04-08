@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Productivity App</title>
+    <title>Bampot Life OS</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4a90e2">
 </head>
 <body>
     <div id="app">
@@ -39,7 +41,12 @@
                 <select id="new-task-category">
                     <!-- Categories will be populated here -->
                 </select>
+                <input type="time" id="new-task-time" title="Set a reminder time">
                 <button id="add-task-btn">Add Task</button>
+            </div>
+            <div class="notification-request" id="notification-request" style="display: none;">
+                <p>Enable notifications to get reminders for your tasks!</p>
+                <button id="enable-notifications-btn">Enable</button>
             </div>
 
             <div class="tasks-container">
@@ -51,5 +58,16 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
