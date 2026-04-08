@@ -1,0 +1,425 @@
+:root {
+    --primary-color: #4a90e2;
+    --bg-color: #f5f7fa;
+    --sidebar-bg: #ffffff;
+    --text-main: #333333;
+    --text-muted: #888888;
+    --border-color: #e1e4e8;
+    --hover-bg: #f0f4f8;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    line-height: 1.6;
+}
+
+#app {
+    display: flex;
+    min-height: 100vh;
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: var(--sidebar-bg);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+/* Sidebar Styling */
+.sidebar {
+    width: 300px;
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+/* Calendar Styling */
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.calendar-header button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+}
+
+.calendar-header button:hover {
+    color: var(--primary-color);
+}
+
+.calendar-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.calendar-grid-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-radius: 50%;
+}
+
+.calendar-day:hover:not(.empty) {
+    background-color: var(--hover-bg);
+}
+
+.calendar-day.empty {
+    cursor: default;
+}
+
+.calendar-day.selected {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+}
+
+.calendar-day.today:not(.selected) {
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.calendar-day.has-tasks::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    width: 4px;
+    height: 4px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+}
+
+.calendar-day { position: relative; } /* for the has-tasks dot */
+
+/* Categories Styling */
+#categories h3 {
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+#category-list {
+    list-style: none;
+}
+
+.category-item {
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.category-item:hover {
+    background-color: var(--hover-bg);
+}
+
+.category-item.active {
+    background-color: var(--hover-bg);
+    font-weight: bold;
+}
+
+.category-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Suggestions Styling */
+#suggestions-container h3 {
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.suggestion-item {
+    background-color: #f9f0ff;
+    border: 1px solid #d3adf7;
+    padding: 8px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.suggestion-item button {
+    background-color: #9254de;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 3px 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.suggestion-item button:hover {
+    background-color: #722ed1;
+}
+
+/* Main Content Styling */
+.main-content {
+    flex-grow: 1;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.main-content header h1 {
+    font-size: 1.8rem;
+    color: var(--text-main);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.add-task-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#new-task-input {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+#new-task-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+#new-task-category, #new-task-time {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: white;
+    font-family: inherit;
+}
+
+#add-task-btn {
+    padding: 10px 20px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+#add-task-btn:hover {
+    background-color: #3a7bc8;
+}
+
+/* Tasks List Styling */
+#task-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    gap: 15px;
+    transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.task-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
+}
+
+.task-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+.task-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.task-title {
+    font-size: 1.1rem;
+}
+
+.task-item.completed .task-title {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.task-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.task-category-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    color: white;
+    align-self: flex-start;
+}
+
+.task-priority-badge {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background-color: #faad14;
+    color: white;
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.task-priority-badge.high-priority {
+    background-color: #f5222d;
+}
+
+.task-actions {
+    display: flex;
+    gap: 10px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.task-item:hover .task-actions {
+    opacity: 1;
+}
+
+.task-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    font-size: 1.1rem;
+}
+
+.breakdown-task-btn {
+    color: #1890ff;
+    font-size: 1rem !important;
+}
+
+.breakdown-task-btn:hover {
+    color: #096dd9;
+}
+
+.delete-task-btn {
+    color: #ff4d4f;
+}
+
+.delete-task-btn:hover {
+    color: #cf1322;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px;
+    font-style: italic;
+}
+
+.notification-request {
+    background-color: #fffbe6;
+    border: 1px solid #ffe58f;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notification-request button {
+    background-color: #faad14;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.notification-request button:hover {
+    background-color: #d48806;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    #app {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 15px;
+        gap: 20px;
+    }
+
+    .main-content {
+        padding: 15px;
+    }
+
+    .add-task-container {
+        flex-direction: column;
+    }
+
+    #new-task-category, #new-task-time, #add-task-btn {
+        width: 100%;
+    }
+}
