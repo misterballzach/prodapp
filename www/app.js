@@ -428,19 +428,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderTasks();
             });
 
-            btnBreakdown.addEventListener('click', () => {
-                const tl = task.title.toLowerCase();
-                let subs = tl.includes('clean') ? ["Clear area", "Wipe", "Trash", "Vacuum"] :
-                           tl.includes('dev') ? ["Plan", "Code", "Test", "Push"] :
-                           ["Step 1", "Step 2", "Review"];
+            btnBreakdown.addEventListener('click', async () => {
+                const btnIcon = btnBreakdown.querySelector('i');
+                btnIcon.className = "fas fa-spinner fa-spin";
+                btnBreakdown.disabled = true;
+                li.style.opacity = "0.7";
 
-                subs.forEach(s => state.tasks.push({
-                    id: crypto.randomUUID(), title: `${task.title}: ${s}`, categoryId: task.categoryId,
-                    date: task.date, time: task.time, completed: false, priority: task.priority, reminderSent: task.reminderSent
-                }));
-                state.tasks = state.tasks.filter(t => t.id !== task.id);
-                saveState();
-                updateViews();
+                try {
+                    const generator = await getAiModel();
+                    const prompt = `Break down the task "${task.title}" into 3 to 5 simple, actionable sub-steps. Output each step clearly on a new line.`;
+
+                    const result = await generator(prompt, {
+                        max_new_tokens: 100,
+                        temperature: 0.6,
+                        do_sample: true
+                    });
+
+                    const outputText = result[0].generated_text;
+                    const splitRegex = outputText.includes('\n') ? /\n/ : /(?<=\.)\s+/;
+                    let subs = outputText.split(splitRegex)
+                        .map(line => line.replace(/^[\d\.\-\*\s]+/, '').trim())
+                        .filter(line => line.length > 2);
+
+                    if (subs.length === 0) {
+                        subs = ["Prep", "Execute", "Review"]; // Fallback
+                    }
+
+                    subs.forEach(s => state.tasks.push({
+                        id: crypto.randomUUID(),
+                        title: `${s} (${task.title})`,
+                        categoryId: task.categoryId,
+                        date: task.date,
+                        time: task.time,
+                        completed: false,
+                        priority: task.priority,
+                        reminderSent: task.reminderSent
+                    }));
+
+                    state.tasks = state.tasks.filter(t => t.id !== task.id); // Remove original task
+                    saveState();
+                    updateViews();
+                } catch (err) {
+                    console.error("AI Breakdown failed", err);
+                    alert("Failed to breakdown task. Check console.");
+                    btnIcon.className = "fas fa-bolt";
+                    btnBreakdown.disabled = false;
+                    li.style.opacity = "1";
+                }
             });
 
             btnDelete.addEventListener('click', () => {
@@ -540,8 +574,16 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.aiStatusText.innerText = "Thinking...";
             elements.aiProgress.style.width = "50%";
 
-            // Frame the prompt for Flan-T5 to output a list
-            const structuredPrompt = `Create a step-by-step checklist to achieve the following goal: "${prompt}". List each step clearly on a new line.`;
+            // Gather context of unfinished tasks
+            const unfinishedTasks = state.tasks
+                .filter(t => !t.completed && t.date <= formatDate(state.selectedDate))
+                .map(t => t.title)
+                .join(', ');
+
+            let contextStr = unfinishedTasks ? ` Currently pending tasks: ${unfinishedTasks}.` : "";
+
+            // Frame the prompt for Flan-T5 to act as an executive assistant
+            const structuredPrompt = `You are an executive assistant. Based on the following goal: "${prompt}", and considering these pending tasks: [${unfinishedTasks}], generate a step-by-step prioritized checklist for today. List each step clearly on a new line.`;
 
             const result = await generator(structuredPrompt, {
                 max_new_tokens: 150,
@@ -569,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.appState.tasks.push({
                     id: crypto.randomUUID(),
                     title: title,
-                    categoryId: targetCategoryId === 'all' ? defaultCategories[1].id : targetCategoryId,
+                    categoryId: targetCategoryId === 'all' ? window.appState.categories[1].id : targetCategoryId,
                     date: targetDateStr,
                     time: null,
                     completed: false,
