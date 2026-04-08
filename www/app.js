@@ -1,3 +1,8 @@
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+// Configure transformers.js for browser usage
+env.allowLocalModels = false;
+
 // --- Global State & Configuration ---
 window.appState = {
     currentDate: new Date(),
@@ -55,6 +60,16 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay: document.getElementById('sidebar-overlay'),
         menuToggleBtn: document.getElementById('menu-toggle-btn'),
         closeSidebarBtn: document.getElementById('close-sidebar-btn'),
+
+        // AI Elements
+        openAiModalBtn: document.getElementById('open-ai-modal-btn'),
+        aiModalOverlay: document.getElementById('ai-modal-overlay'),
+        aiPromptInput: document.getElementById('ai-prompt-input'),
+        cancelAiBtn: document.getElementById('cancel-ai-btn'),
+        runAiBtn: document.getElementById('run-ai-btn'),
+        aiStatus: document.getElementById('ai-status'),
+        aiStatusText: document.getElementById('ai-status-text'),
+        aiProgress: document.getElementById('ai-progress'),
         calendarGrid: document.getElementById('calendar-grid'),
         monthYearDisplay: document.getElementById('current-month-year'),
         prevMonthBtn: document.getElementById('prev-month'),
@@ -469,6 +484,134 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     elements.newTaskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') elements.addTaskBtn.click(); });
+
+    // --- Local AI Logic ---
+    let aiGenerator = null;
+    let isAiLoading = false;
+
+    const getAiModel = async () => {
+        if (aiGenerator) return aiGenerator;
+
+        isAiLoading = true;
+        elements.aiStatus.classList.remove('hidden');
+        elements.runAiBtn.disabled = true;
+        elements.aiStatusText.innerText = "Downloading Local AI Model (~77MB)... This only happens once.";
+        elements.aiProgress.style.width = "0%";
+
+        try {
+            aiGenerator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-77M', {
+                progress_callback: (info) => {
+                    if (info.status === 'progress') {
+                        const progress = (info.loaded / info.total) * 100 || 0;
+                        elements.aiProgress.style.width = `${progress}%`;
+                        elements.aiStatusText.innerText = `Downloading Model: ${Math.round(progress)}%`;
+                    }
+                }
+            });
+            elements.aiStatusText.innerText = "Model loaded successfully!";
+            elements.aiProgress.style.width = "100%";
+            setTimeout(() => {
+                if(!isAiLoading) elements.aiStatus.classList.add('hidden');
+            }, 2000);
+            return aiGenerator;
+        } catch (err) {
+            console.error("AI Model Load Error:", err);
+            elements.aiStatusText.innerText = "Failed to load AI model.";
+            elements.aiStatusText.style.color = "#ef4444";
+            throw err;
+        } finally {
+            isAiLoading = false;
+            elements.runAiBtn.disabled = false;
+        }
+    };
+
+    const generateAiTasks = async () => {
+        const prompt = elements.aiPromptInput.value.trim();
+        if (!prompt) return;
+
+        elements.aiStatus.classList.remove('hidden');
+        elements.aiProgress.style.width = "0%";
+        elements.aiStatusText.innerText = "Initializing AI...";
+        elements.runAiBtn.disabled = true;
+        elements.runAiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
+
+        try {
+            const generator = await getAiModel();
+            elements.aiStatusText.innerText = "Thinking...";
+            elements.aiProgress.style.width = "50%";
+
+            // Frame the prompt for Flan-T5 to output a list
+            const structuredPrompt = `Create a step-by-step checklist to achieve the following goal: "${prompt}". List each step clearly on a new line.`;
+
+            const result = await generator(structuredPrompt, {
+                max_new_tokens: 150,
+                temperature: 0.7,
+                do_sample: true
+            });
+
+            const outputText = result[0].generated_text;
+
+            // Parse the output: Split by newlines or punctuation if it generated a paragraph, remove numbers, bullet points, and trim
+            const splitRegex = outputText.includes('\n') ? /\n/ : /(?<=\.)\s+/;
+            const newTasks = outputText.split(splitRegex)
+                .map(line => line.replace(/^[\d\.\-\*\s]+/, '').trim())
+                .filter(line => line.length > 2);
+
+            if (newTasks.length === 0) {
+                // Fallback if parsing fails
+                newTasks.push(outputText.trim());
+            }
+
+            const targetCategoryId = elements.newTaskCategorySelect.value || 'all';
+            const targetDateStr = formatDate(state.selectedDate);
+
+            newTasks.forEach(title => {
+                window.appState.tasks.push({
+                    id: crypto.randomUUID(),
+                    title: title,
+                    categoryId: targetCategoryId === 'all' ? defaultCategories[1].id : targetCategoryId,
+                    date: targetDateStr,
+                    time: null,
+                    completed: false,
+                    priority: 0,
+                    reminderSent: false
+                });
+            });
+
+            saveState();
+            updateViews();
+
+            // Close modal
+            elements.aiModalOverlay.classList.add('hidden');
+            elements.aiPromptInput.value = '';
+
+        } catch (error) {
+            console.error(error);
+            alert("AI Generation failed. Check console.");
+        } finally {
+            elements.runAiBtn.disabled = false;
+            elements.runAiBtn.innerHTML = '<i class="fas fa-bolt"></i> Generate';
+            elements.aiStatus.classList.add('hidden');
+        }
+    };
+
+    // AI Event Listeners
+    if (elements.openAiModalBtn) {
+        elements.openAiModalBtn.addEventListener('click', () => {
+            elements.aiModalOverlay.classList.remove('hidden');
+            elements.aiPromptInput.focus();
+        });
+    }
+
+    if (elements.cancelAiBtn) {
+        elements.cancelAiBtn.addEventListener('click', () => {
+            elements.aiModalOverlay.classList.add('hidden');
+        });
+    }
+
+    if (elements.runAiBtn) {
+        elements.runAiBtn.addEventListener('click', generateAiTasks);
+    }
 
     // Boot
     checkNotificationPermission();
