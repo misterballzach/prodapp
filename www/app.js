@@ -436,12 +436,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 try {
                     const generator = await getAiModel();
-                    const prompt = `Break down the task "${task.title}" into 3 to 5 simple, actionable sub-steps. Output each step clearly on a new line.`;
+                    const promptText = `Break down the task "${task.title}" into 3 to 5 simple, actionable sub-steps. Output ONLY the steps, each on a new line. No intro, no numbers.`;
+                    const structuredPrompt = `<|im_start|>system\nYou are a helpful task-breakdown assistant.<|im_end|>\n<|im_start|>user\n${promptText}<|im_end|>\n<|im_start|>assistant\n`;
 
-                    const result = await generator(prompt, {
-                        max_new_tokens: 100,
-                        temperature: 0.6,
-                        do_sample: true
+                    const result = await generator(structuredPrompt, {
+                        max_new_tokens: 150,
+                        temperature: 0.5,
+                        do_sample: true,
+                        return_full_text: false
                     });
 
                     const outputText = result[0].generated_text;
@@ -529,11 +531,13 @@ document.addEventListener('DOMContentLoaded', () => {
         isAiLoading = true;
         elements.aiStatus.classList.remove('hidden');
         elements.runAiBtn.disabled = true;
-        elements.aiStatusText.innerText = "Downloading Local AI Model (~77MB)... This only happens once.";
+        elements.aiStatusText.innerText = "Downloading Max Power Local AI (~1.2GB)... This only happens once.";
         elements.aiProgress.style.width = "0%";
 
         try {
-            aiGenerator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-77M', {
+            // Upgrading to the most powerful JS-capable instruct model (Qwen 1.5 1.8B Chat) for state-of-the-art browser reasoning.
+            // Pushing beyond ~2GB usually triggers OOM errors on mobile devices via WASM. 1.8B parameter is the sweet spot for maximum power.
+            aiGenerator = await pipeline('text-generation', 'Xenova/Qwen1.5-1.8B-Chat', {
                 progress_callback: (info) => {
                     if (info.status === 'progress') {
                         const progress = (info.loaded / info.total) * 100 || 0;
@@ -582,13 +586,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let contextStr = unfinishedTasks ? ` Currently pending tasks: ${unfinishedTasks}.` : "";
 
-            // Frame the prompt for Flan-T5 to act as an executive assistant
-            const structuredPrompt = `You are an executive assistant. Based on the following goal: "${prompt}", and considering these pending tasks: [${unfinishedTasks}], generate a step-by-step prioritized checklist for today. List each step clearly on a new line.`;
+            // Frame the prompt for Qwen Chat model
+            const messages = [
+                { role: 'system', content: 'You are a highly capable executive assistant. Your job is to output ONLY simple, actionable checklist items based on the user request. Put each item on a new line. Do not include introductory text, numbers, or bullet characters.' },
+                { role: 'user', content: `My goal is: "${prompt}". My current pending tasks are: [${unfinishedTasks}]. Create a prioritized checklist for me.` }
+            ];
+
+            // Transformers.js provides apply_chat_template, but since Qwen is straightforward, we can format it manually if needed, or use the pipeline directly.
+            // Text-generation models often expect chat markup, but the pipeline usually handles it if chat templates are supported,
+            // otherwise we format it:
+            const structuredPrompt = `<|im_start|>system\n${messages[0].content}<|im_end|>\n<|im_start|>user\n${messages[1].content}<|im_end|>\n<|im_start|>assistant\n`;
 
             const result = await generator(structuredPrompt, {
-                max_new_tokens: 150,
-                temperature: 0.7,
-                do_sample: true
+                max_new_tokens: 200,
+                temperature: 0.6,
+                do_sample: true,
+                return_full_text: false // Don't return the prompt
             });
 
             const outputText = result[0].generated_text;
