@@ -1,8 +1,3 @@
-import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
-
-// Configure transformers.js for browser usage
-env.allowLocalModels = false;
-
 // --- Global State & Configuration ---
 window.appState = {
     currentDate: new Date(),
@@ -70,6 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
         aiStatus: document.getElementById('ai-status'),
         aiStatusText: document.getElementById('ai-status-text'),
         aiProgress: document.getElementById('ai-progress'),
+
+        // AI Settings Elements
+        openAiSettingsBtn: document.getElementById('open-ai-settings-btn'),
+        aiSettingsModal: document.getElementById('ai-settings-modal'),
+        cancelAiSettingsBtn: document.getElementById('cancel-ai-settings-btn'),
+        saveAiSettingsBtn: document.getElementById('save-ai-settings-btn'),
+        aiBaseUrlInput: document.getElementById('ai-base-url'),
+        aiModelNameInput: document.getElementById('ai-model-name'),
+        aiApiKeyInput: document.getElementById('ai-api-key'),
         calendarGrid: document.getElementById('calendar-grid'),
         monthYearDisplay: document.getElementById('current-month-year'),
         prevMonthBtn: document.getElementById('prev-month'),
@@ -435,18 +439,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.style.opacity = "0.7";
 
                 try {
-                    const generator = await getAiModel();
-                    const promptText = `Break down the task "${task.title}" into 3 to 5 simple, actionable sub-steps. Output ONLY the steps, each on a new line. No intro, no numbers.`;
-                    const structuredPrompt = `<|im_start|>system\nYou are a helpful task-breakdown assistant.<|im_end|>\n<|im_start|>user\n${promptText}<|im_end|>\n<|im_start|>assistant\n`;
+                    const systemPrompt = "You are a helpful task-breakdown assistant. Output ONLY the steps, each on a new line. No intro, no numbers.";
+                    const userPrompt = `Break down the task "${task.title}" into 3 to 5 simple, actionable sub-steps.`;
 
-                    const result = await generator(structuredPrompt, {
-                        max_new_tokens: 150,
-                        temperature: 0.5,
-                        do_sample: true,
-                        return_full_text: false
-                    });
+                    const outputText = await fetchAiCompletion(systemPrompt, userPrompt);
 
-                    const outputText = result[0].generated_text;
                     const splitRegex = outputText.includes('\n') ? /\n/ : /(?<=\.)\s+/;
                     let subs = outputText.split(splitRegex)
                         .map(line => line.replace(/^[\d\.\-\*\s]+/, '').trim())
@@ -521,46 +518,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     elements.newTaskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') elements.addTaskBtn.click(); });
 
-    // --- Local AI Logic ---
-    let aiGenerator = null;
-    let isAiLoading = false;
+    // --- Remote API AI Logic ---
+    const fetchAiCompletion = async (systemPrompt, userPrompt) => {
+        const aiConfig = JSON.parse(localStorage.getItem('bampot-ai-config') || '{"baseUrl":"http://localhost:11434/v1", "model":"llama3", "apiKey":""}');
 
-    const getAiModel = async () => {
-        if (aiGenerator) return aiGenerator;
+        const payload = {
+            model: aiConfig.model,
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+            ],
+            temperature: 0.6
+        };
 
-        isAiLoading = true;
-        elements.aiStatus.classList.remove('hidden');
-        elements.runAiBtn.disabled = true;
-        elements.aiStatusText.innerText = "Downloading Advanced Local AI (~350MB)... This only happens once.";
-        elements.aiProgress.style.width = "0%";
-
-        try {
-            // 1.8B caused OOM crashes on the user's device.
-            // Qwen 1.5 0.5B Chat is the most powerful model that reliably fits in WASM memory across all mobile/desktop devices without crashing.
-            aiGenerator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat', {
-                progress_callback: (info) => {
-                    if (info.status === 'progress') {
-                        const progress = (info.loaded / info.total) * 100 || 0;
-                        elements.aiProgress.style.width = `${progress}%`;
-                        elements.aiStatusText.innerText = `Downloading Model: ${Math.round(progress)}%`;
-                    }
-                }
-            });
-            elements.aiStatusText.innerText = "Model loaded successfully!";
-            elements.aiProgress.style.width = "100%";
-            setTimeout(() => {
-                if(!isAiLoading) elements.aiStatus.classList.add('hidden');
-            }, 2000);
-            return aiGenerator;
-        } catch (err) {
-            console.error("AI Model Load Error:", err);
-            elements.aiStatusText.innerText = "Failed to load AI model.";
-            elements.aiStatusText.style.color = "#ef4444";
-            throw err;
-        } finally {
-            isAiLoading = false;
-            elements.runAiBtn.disabled = false;
+        const headers = {
+            "Content-Type": "application/json"
+        };
+        if (aiConfig.apiKey) {
+            headers["Authorization"] = `Bearer ${aiConfig.apiKey}`;
         }
+
+        const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
     };
 
     const generateAiTasks = async () => {
@@ -568,52 +557,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!prompt) return;
 
         elements.aiStatus.classList.remove('hidden');
-        elements.aiProgress.style.width = "0%";
-        elements.aiStatusText.innerText = "Initializing AI...";
+        elements.aiStatusText.innerText = "Thinking...";
+        elements.aiProgress.style.width = "50%";
         elements.runAiBtn.disabled = true;
         elements.runAiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
 
         try {
-            const generator = await getAiModel();
-            elements.aiStatusText.innerText = "Thinking...";
-            elements.aiProgress.style.width = "50%";
-
             // Gather context of unfinished tasks
             const unfinishedTasks = state.tasks
                 .filter(t => !t.completed && t.date <= formatDate(state.selectedDate))
                 .map(t => t.title)
                 .join(', ');
 
-            let contextStr = unfinishedTasks ? ` Currently pending tasks: ${unfinishedTasks}.` : "";
+            const systemPrompt = "You are a highly capable executive assistant. Your job is to output ONLY simple, actionable checklist items based on the user request. Put each item on a new line. Do not include introductory text, numbers, or bullet characters.";
+            const userPrompt = `My goal is: "${prompt}". My current pending tasks are: [${unfinishedTasks}]. Create a prioritized checklist for me.`;
 
-            // Frame the prompt for Qwen Chat model
-            const messages = [
-                { role: 'system', content: 'You are a highly capable executive assistant. Your job is to output ONLY simple, actionable checklist items based on the user request. Put each item on a new line. Do not include introductory text, numbers, or bullet characters.' },
-                { role: 'user', content: `My goal is: "${prompt}". My current pending tasks are: [${unfinishedTasks}]. Create a prioritized checklist for me.` }
-            ];
+            const outputText = await fetchAiCompletion(systemPrompt, userPrompt);
+            elements.aiProgress.style.width = "100%";
 
-            // Transformers.js provides apply_chat_template, but since Qwen is straightforward, we can format it manually if needed, or use the pipeline directly.
-            // Text-generation models often expect chat markup, but the pipeline usually handles it if chat templates are supported,
-            // otherwise we format it:
-            const structuredPrompt = `<|im_start|>system\n${messages[0].content}<|im_end|>\n<|im_start|>user\n${messages[1].content}<|im_end|>\n<|im_start|>assistant\n`;
-
-            const result = await generator(structuredPrompt, {
-                max_new_tokens: 200,
-                temperature: 0.6,
-                do_sample: true,
-                return_full_text: false // Don't return the prompt
-            });
-
-            const outputText = result[0].generated_text;
-
-            // Parse the output: Split by newlines or punctuation if it generated a paragraph, remove numbers, bullet points, and trim
+            // Parse the output
             const splitRegex = outputText.includes('\n') ? /\n/ : /(?<=\.)\s+/;
             const newTasks = outputText.split(splitRegex)
                 .map(line => line.replace(/^[\d\.\-\*\s]+/, '').trim())
                 .filter(line => line.length > 2);
 
             if (newTasks.length === 0) {
-                // Fallback if parsing fails
                 newTasks.push(outputText.trim());
             }
 
@@ -641,12 +609,13 @@ document.addEventListener('DOMContentLoaded', () => {
             elements.aiPromptInput.value = '';
 
         } catch (error) {
-            console.error(error);
-            alert("AI Generation failed. Check console.");
+            console.error("AI Generation Error:", error);
+            alert(`AI Generation failed: ${error.message}. Please check your AI Settings.`);
         } finally {
             elements.runAiBtn.disabled = false;
             elements.runAiBtn.innerHTML = '<i class="fas fa-bolt"></i> Generate';
             elements.aiStatus.classList.add('hidden');
+            elements.aiProgress.style.width = "0%";
         }
     };
 
@@ -666,6 +635,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (elements.runAiBtn) {
         elements.runAiBtn.addEventListener('click', generateAiTasks);
+    }
+
+    // AI Settings Listeners
+    if (elements.openAiSettingsBtn) {
+        elements.openAiSettingsBtn.addEventListener('click', () => {
+            const aiConfig = JSON.parse(localStorage.getItem('bampot-ai-config') || '{"baseUrl":"http://localhost:11434/v1", "model":"llama3", "apiKey":""}');
+            elements.aiBaseUrlInput.value = aiConfig.baseUrl;
+            elements.aiModelNameInput.value = aiConfig.model;
+            elements.aiApiKeyInput.value = aiConfig.apiKey;
+            elements.aiSettingsModal.classList.remove('hidden');
+        });
+    }
+
+    if (elements.cancelAiSettingsBtn) {
+        elements.cancelAiSettingsBtn.addEventListener('click', () => {
+            elements.aiSettingsModal.classList.add('hidden');
+        });
+    }
+
+    if (elements.saveAiSettingsBtn) {
+        elements.saveAiSettingsBtn.addEventListener('click', () => {
+            const config = {
+                baseUrl: elements.aiBaseUrlInput.value.trim().replace(/\/$/, ''),
+                model: elements.aiModelNameInput.value.trim(),
+                apiKey: elements.aiApiKeyInput.value.trim()
+            };
+            localStorage.setItem('bampot-ai-config', JSON.stringify(config));
+            elements.aiSettingsModal.classList.add('hidden');
+        });
     }
 
     // Boot

@@ -87,16 +87,43 @@
                 </div>
             </div>
 
+            <!-- AI Settings Button (in header) -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 12px; padding-right: 16px;">
+                <button id="open-ai-settings-btn" class="btn btn-icon" style="font-size: 0.85rem; color: var(--text-muted);"><i class="fas fa-cog"></i> AI Settings</button>
+            </div>
+
+            <!-- AI Settings Modal Overlay -->
+            <div id="ai-settings-modal" class="modal-overlay hidden">
+                <div class="modal-content">
+                    <h3><i class="fas fa-cog" style="color: var(--text-muted); margin-right: 8px;"></i> AI Configuration</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Connect to any OpenAI-compatible API (Ollama, LM Studio, OpenAI, etc) to remove limits on model size and capability.</p>
+
+                    <label for="ai-base-url" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">API Base URL</label>
+                    <input type="text" id="ai-base-url" placeholder="http://localhost:11434/v1" style="width: 100%; margin-bottom: 12px; padding: 8px; border-radius: var(--border-radius); background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white;">
+
+                    <label for="ai-model-name" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Model Name</label>
+                    <input type="text" id="ai-model-name" placeholder="llama3" style="width: 100%; margin-bottom: 12px; padding: 8px; border-radius: var(--border-radius); background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white;">
+
+                    <label for="ai-api-key" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">API Key (Optional for Local)</label>
+                    <input type="password" id="ai-api-key" placeholder="sk-..." style="width: 100%; margin-bottom: 24px; padding: 8px; border-radius: var(--border-radius); background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white;">
+
+                    <div class="modal-actions">
+                        <button id="cancel-ai-settings-btn" class="btn btn-icon"><i class="fas fa-times"></i> Cancel</button>
+                        <button id="save-ai-settings-btn" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- AI Generation Modal Overlay -->
             <div id="ai-modal-overlay" class="modal-overlay hidden">
                 <div class="modal-content">
                     <h3><i class="fas fa-magic" style="color: #ec4899; margin-right: 8px;"></i> Executive AI Assistant</h3>
-                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Describe your goal vaguely. The AI considers your currently pending tasks to generate a prioritized checklist for you. (Runs securely locally!)</p>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Describe your goal vaguely. The AI considers your currently pending tasks to generate a prioritized checklist for you.</p>
                     <textarea id="ai-prompt-input" rows="3" placeholder="e.g. 'I need to clean the house before guests arrive' or 'Plan a birthday party'"></textarea>
 
                     <div id="ai-status" class="ai-status-container hidden">
                         <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--primary);">
-                            <i class="fas fa-spinner fa-spin"></i> <span id="ai-status-text">Loading AI Model... (May take a minute on first run)</span>
+                            <i class="fas fa-network-wired"></i> <span id="ai-status-text">Connecting to AI Provider...</span>
                         </div>
                         <div class="progress-bar"><div id="ai-progress" class="progress-fill"></div></div>
                     </div>
