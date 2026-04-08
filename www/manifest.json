@@ -4,8 +4,8 @@
     "description": "Your ultimate daily life operating system to keep you on task.",
     "start_url": "/index.html",
     "display": "standalone",
-    "background_color": "#f5f7fa",
-    "theme_color": "#4a90e2",
+    "background_color": "#0f172a",
+    "theme_color": "#3b82f6",
     "icons": [
         {
             "src": "icon-192.png",
