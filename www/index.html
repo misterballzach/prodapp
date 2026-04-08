@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bampot OS</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sticky Header/Nav -->
+        <header class="app-header">
+            <button id="menu-toggle-btn" class="icon-btn"><i class="fas fa-bars"></i></button>
+            <h1 class="app-title">Bampot OS</h1>
+            <button id="notifications-btn" class="icon-btn"><i class="fas fa-bell"></i></button>
+        </header>
+
+        <!-- Sidebar / Drawer -->
+        <div id="sidebar-overlay" class="overlay hidden"></div>
+        <aside id="sidebar" class="sidebar hidden">
+            <div class="sidebar-header">
+                <h2>Navigation</h2>
+                <button id="close-sidebar-btn" class="icon-btn"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Calendar</h3>
+                <div id="calendar-wrapper">
+                    <div class="calendar-header">
+                        <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+                        <span id="current-month-year"></span>
+                        <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-grid-header">
+                        <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+                    </div>
+                    <div id="calendar-grid" class="calendar-grid"></div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>System Views</h3>
+                <ul id="category-list" class="filter-list">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Smart Suggestions <i class="fas fa-sparkles text-accent"></i></h3>
+                <ul id="suggestion-list" class="suggestion-list">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="date-display-wrapper">
+                <h2 id="selected-date-display" class="date-display">Today</h2>
+                <p id="selected-category-display" class="category-display">All Categories</p>
+            </div>
+
+            <div id="notification-banner" class="notification-banner hidden">
+                <div>
+                    <i class="fas fa-info-circle"></i>
+                    <span>Enable notifications for task reminders.</span>
+                </div>
+                <button id="enable-notifications-btn" class="primary-btn small">Enable</button>
+            </div>
+
+            <!-- Add Task Form -->
+            <div class="add-task-card">
+                <div class="input-group">
+                    <input type="text" id="new-task-input" placeholder="What needs to be done?">
+                </div>
+                <div class="input-row">
+                    <select id="new-task-category" class="select-input">
+                        <!-- Populated by JS -->
+                    </select>
+                    <input type="time" id="new-task-time" class="time-input">
+                    <button id="add-task-btn" class="primary-btn"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+
+            <!-- Task List -->
+            <div class="tasks-wrapper">
+                <ul id="task-list" class="task-list">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful');
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
