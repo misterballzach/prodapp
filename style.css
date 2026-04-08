@@ -162,6 +162,11 @@ body {
     display: inline-block;
 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
 /* Suggestions Styling */
 #suggestions-container h3 {
     font-size: 1.1rem;
@@ -196,6 +201,10 @@ body {
     background-color: #722ed1;
 }
 
+<<<<<<< HEAD
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
 /* Main Content Styling */
 .main-content {
     flex-grow: 1;
@@ -330,6 +339,25 @@ body {
     background-color: #f5222d;
 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+.delete-task-btn {
+    background: none;
+    border: none;
+    color: #ff4d4f;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 5px;
+    opacity: 0.5;
+}
+
+.task-item:hover .delete-task-btn {
+    opacity: 1;
+}
+
+=======
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
 .task-actions {
     display: flex;
     gap: 10px;
@@ -362,6 +390,10 @@ body {
     color: #ff4d4f;
 }
 
+<<<<<<< HEAD
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
 .delete-task-btn:hover {
     color: #cf1322;
 }

@@ -72,8 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationRequest = document.getElementById('notification-request');
     const enableNotificationsBtn = document.getElementById('enable-notifications-btn');
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
     const suggestionList = document.getElementById('suggestion-list');
 
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+    const suggestionList = document.getElementById('suggestion-list');
+
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
     // --- Notifications Logic ---
     const checkNotificationPermission = () => {
         if (!('Notification' in window)) {
@@ -344,6 +352,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar(); // Re-render to update task dots
     };
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
     const breakDownTask = (task) => {
         const titleLower = task.title.toLowerCase();
         let subtasks = [];
@@ -380,6 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteTask(task.id);
     };
 
+<<<<<<< HEAD
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
     const renderTasks = () => {
         taskList.innerHTML = '';
 
@@ -462,6 +479,18 @@ document.addEventListener('DOMContentLoaded', () => {
             contentDiv.appendChild(titleSpan);
             contentDiv.appendChild(badgesContainer);
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-task-btn';
+            deleteBtn.innerHTML = '&times;';
+
+            li.appendChild(checkbox);
+            li.appendChild(contentDiv);
+            li.appendChild(deleteBtn);
+=======
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'task-actions';
 
@@ -481,15 +510,28 @@ document.addEventListener('DOMContentLoaded', () => {
             li.appendChild(checkbox);
             li.appendChild(contentDiv);
             li.appendChild(actionsDiv);
+<<<<<<< HEAD
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
 
             checkbox.addEventListener('change', (e) => {
                 toggleTaskCompletion(task.title, e.target.checked);
             });
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
             breakdownBtn.addEventListener('click', () => {
                 breakDownTask(task);
             });
 
+<<<<<<< HEAD
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
             deleteBtn.addEventListener('click', () => {
                 deleteTask(task.id);
             });
@@ -529,7 +571,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newTaskTimeInput) newTaskTimeInput.value = '';
         renderTasks();
         renderCalendar(); // Re-render to update task dots
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
         renderSuggestions();
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+        renderSuggestions();
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
     };
 
     addTaskBtn.addEventListener('click', addTask);
@@ -537,6 +586,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') addTask();
     });
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
     // --- Suggestions Logic ---
     const renderSuggestions = () => {
         suggestionList.innerHTML = '';
@@ -609,6 +663,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+<<<<<<< HEAD
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
     // --- Initialization ---
     checkNotificationPermission();
     loadDailyDefaults();
@@ -617,11 +675,25 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDateDisplay();
     renderCalendar();
     renderTasks();
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
     renderSuggestions();
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+    renderSuggestions();
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
 
     // Expose functions globally for testing script
     window.renderTasks = renderTasks;
     window.renderCalendar = renderCalendar;
     window.checkAndRolloverTasks = checkAndRolloverTasks;
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
     window.renderSuggestions = renderSuggestions;
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
+=======
+    window.renderSuggestions = renderSuggestions;
+>>>>>>> 4939321 (feat: Add smart task suggestions and one-click task breakdown)
 });
