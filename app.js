@@ -5,15 +5,40 @@ window.appState = {
     selectedCategory: 'all',
     categories: [
         { id: 'all', name: 'All Categories', color: '#888888' },
-        { id: 'work', name: 'Work', color: '#ff4d4f' },
-        { id: 'personal', name: 'Personal', color: '#52c41a' },
-        { id: 'health', name: 'Health', color: '#1890ff' }
+        { id: 'minimum', name: 'Minimum Day', color: '#52c41a' },
+        { id: 'daily', name: 'Daily System', color: '#1890ff' },
+        { id: 'quests', name: 'Quests', color: '#eb2f96' },
+        { id: 'weekly', name: 'Weekly System', color: '#faad14' },
+        { id: 'monthly', name: 'Monthly System', color: '#722ed1' }
     ],
-    tasks: [] // Array of task objects: { id, title, categoryId, date (YYYY-MM-DD), completed }
+    tasks: [], // Array of task objects: { id, title, categoryId, date (YYYY-MM-DD), completed }
+    initializedDates: [] // Array of dates (YYYY-MM-DD) that have had default tasks loaded
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- State ---
+    // --- State & Persistence ---
+    const loadState = () => {
+        const saved = localStorage.getItem('bampot-os-state');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Merge saved data into window.appState
+                window.appState.tasks = parsed.tasks || [];
+                window.appState.initializedDates = parsed.initializedDates || [];
+            } catch (e) {
+                console.error("Failed to parse saved state", e);
+            }
+        }
+    };
+
+    const saveState = () => {
+        localStorage.setItem('bampot-os-state', JSON.stringify({
+            tasks: window.appState.tasks,
+            initializedDates: window.appState.initializedDates
+        }));
+    };
+
+    loadState(); // Load immediately
     const state = window.appState;
 
     // Normalize date to YYYY-MM-DD
@@ -38,10 +63,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const categoryList = document.getElementById('category-list');
     const newTaskCategorySelect = document.getElementById('new-task-category');
+    const newTaskTimeInput = document.getElementById('new-task-time');
 
     const taskList = document.getElementById('task-list');
     const newTaskInput = document.getElementById('new-task-input');
     const addTaskBtn = document.getElementById('add-task-btn');
+
+    const notificationRequest = document.getElementById('notification-request');
+    const enableNotificationsBtn = document.getElementById('enable-notifications-btn');
+
+    // --- Notifications Logic ---
+    const checkNotificationPermission = () => {
+        if (!('Notification' in window)) {
+            console.log('This browser does not support desktop notification');
+            return;
+        }
+
+        if (Notification.permission === 'default') {
+            notificationRequest.style.display = 'flex';
+        } else {
+            notificationRequest.style.display = 'none';
+        }
+    };
+
+    enableNotificationsBtn.addEventListener('click', () => {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                notificationRequest.style.display = 'none';
+                new Notification('Bampot OS', { body: 'Notifications enabled!' });
+            }
+        });
+    });
+
+    const checkReminders = () => {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+        const now = new Date();
+        const currentHours = now.getHours().toString().padStart(2, '0');
+        const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+        const currentTime = `${currentHours}:${currentMinutes}`;
+        const todayStr = formatDate(now);
+
+        state.tasks.forEach(task => {
+            if (!task.completed && task.date === todayStr && task.time === currentTime && !task.reminderSent) {
+                new Notification('Bampot OS Reminder', {
+                    body: `It's time for: ${task.title}`,
+                    icon: '/icon-192.png'
+                });
+                task.reminderSent = true;
+            }
+        });
+    };
+
+    // Check for reminders every minute
+    setInterval(checkReminders, 60000);
 
     // --- Calendar Logic ---
     const renderCalendar = () => {
@@ -142,6 +217,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // --- Bampot OS Daily Defaults ---
+    const loadDailyDefaults = () => {
+        const todayStr = formatDate(new Date());
+
+        // Prevent loading defaults multiple times for the same day
+        if (state.initializedDates.includes(todayStr)) return;
+
+        const defaultTasks = [
+            // Minimum Day
+            { title: "Drink water", categoryId: "minimum" },
+            { title: "Eat something", categoryId: "minimum" },
+            { title: "Throw away 10 things", categoryId: "minimum" },
+            { title: "Take trash outside", categoryId: "minimum" },
+            { title: "Do 5–10 minutes of Bampot work", categoryId: "minimum" },
+
+            // Daily System (Boot)
+            { title: "Open blinds / sunlight", categoryId: "daily" },
+            { title: "Brush teeth", categoryId: "daily" },
+            { title: "Put on real clothes", categoryId: "daily" },
+            { title: "Bed check (protector / sheets)", categoryId: "daily" },
+
+            // Daily System (Work)
+            { title: "Deep Work Block (45-90m)", categoryId: "daily" },
+
+            // Quests (Placeholders)
+            { title: "Main Quest: Deep dev work", categoryId: "quests" },
+            { title: "Side Quest 1", categoryId: "quests" },
+            { title: "Side Quest 2", categoryId: "quests" }
+        ];
+
+        defaultTasks.forEach(task => {
+            // Check if it somehow already exists to avoid duplicates
+            const exists = state.tasks.some(t => t.title === task.title && t.date === todayStr);
+            if (!exists) {
+                state.tasks.push({
+                    id: Date.now().toString() + Math.random().toString(36).substring(7),
+                    title: task.title,
+                    categoryId: task.categoryId,
+                    date: todayStr,
+                    time: null,
+                    completed: false,
+                    priority: 0,
+                    reminderSent: false
+                });
+            }
+        });
+
+        state.initializedDates.push(todayStr);
+        saveState();
+    };
+
     // --- Task Rollover Logic ---
     const checkAndRolloverTasks = () => {
         const today = new Date();
@@ -190,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 task.rolloverStatus = 'rolled-over'; // Add a flag to indicate why it's completed
             }
         });
+        saveState();
     };
 
     // --- Task Logic ---
@@ -204,11 +331,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 task.completed = completed;
             }
         });
+        saveState();
         renderTasks();
     };
 
     const deleteTask = (id) => {
         state.tasks = state.tasks.filter(t => t.id !== id);
+        saveState();
         renderTasks();
         renderCalendar(); // Re-render to update task dots
     };
@@ -266,6 +395,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             badgesContainer.appendChild(badgeSpan);
 
+            // Add time badge if applicable
+            if (task.time) {
+                const timeBadge = document.createElement('span');
+                timeBadge.className = 'task-category-badge';
+                timeBadge.style.backgroundColor = '#8c8c8c';
+                timeBadge.textContent = `⏰ ${task.time}`;
+                badgesContainer.appendChild(timeBadge);
+            }
+
             // Add priority/overdue badge if applicable
             if (task.priority > 0 && !task.completed) {
                 const priorityBadge = document.createElement('span');
@@ -313,6 +451,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const categoryId = newTaskCategorySelect.value;
         const dateStr = formatDate(state.selectedDate);
 
+        const timeVal = newTaskTimeInput ? newTaskTimeInput.value : '';
+
         // Check if there is an existing task with same title to inherit completion status
         const existingSimilarTask = state.tasks.find(t => t.title.toLowerCase() === title.toLowerCase());
         const isCompleted = existingSimilarTask ? existingSimilarTask.completed : false;
@@ -322,13 +462,17 @@ document.addEventListener('DOMContentLoaded', () => {
             title: title,
             categoryId: categoryId,
             date: dateStr,
+            time: timeVal || null,
             completed: isCompleted,
-            priority: 0 // Default priority
+            priority: 0, // Default priority
+            reminderSent: false
         };
 
         state.tasks.push(newTask);
+        saveState();
 
         newTaskInput.value = '';
+        if (newTaskTimeInput) newTaskTimeInput.value = '';
         renderTasks();
         renderCalendar(); // Re-render to update task dots
     };
@@ -339,6 +483,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initialization ---
+    checkNotificationPermission();
+    loadDailyDefaults();
     checkAndRolloverTasks();
     renderCategories();
     updateDateDisplay();
