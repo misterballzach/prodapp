@@ -96,16 +96,32 @@
             <div id="ai-settings-modal" class="modal-overlay hidden">
                 <div class="modal-content">
                     <h3><i class="fas fa-cog" style="color: var(--text-muted); margin-right: 8px;"></i> AI Configuration</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Connect to any OpenAI-compatible API (Ollama, LM Studio, OpenAI, etc) to remove limits on model size and capability.</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Choose which local on-device AI model to run. (No external servers are used).</p>
 
-                    <label for="ai-base-url" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">API Base URL</label>
-                    <input type="text" id="ai-base-url" placeholder="http://localhost:11434/v1" style="width: 100%; margin-bottom: 12px; padding: 8px; border-radius: var(--border-radius); background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: white;">
+                        <input type="radio" name="ai-model-choice" value="Xenova/Qwen1.5-0.5B-Chat" checked>
+                        <strong>Fast & Reliable</strong> (~350MB)<br>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 20px; display: inline-block;">Best for older phones. Runs safely without crashing.</span>
+                    </label>
 
-                    <label for="ai-model-name" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">Model Name</label>
-                    <input type="text" id="ai-model-name" placeholder="llama3" style="width: 100%; margin-bottom: 12px; padding: 8px; border-radius: var(--border-radius); background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 12px; color: white;">
+                        <input type="radio" name="ai-model-choice" value="Xenova/Qwen1.5-1.8B-Chat">
+                        <strong>Maximum Power</strong> (~1.2GB)<br>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 20px; display: inline-block;">Smartest local logic. Requires high RAM. May crash standard browsers.</span>
+                    </label>
 
-                    <label for="ai-api-key" style="display: block; font-size: 0.85rem; margin-bottom: 4px;">API Key (Optional for Local)</label>
-                    <input type="password" id="ai-api-key" placeholder="sk-..." style="width: 100%; margin-bottom: 24px; padding: 8px; border-radius: var(--border-radius); background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white;">
+                    <label style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: white;">
+                        <input type="radio" name="ai-model-choice" value="custom-api">
+                        <strong>Bring Your Own Model (Local API)</strong><br>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 20px; display: inline-block;">Connect to your own Ollama/LM Studio server. No limits!</span>
+                    </label>
+
+                    <div id="custom-api-settings" style="margin-left: 20px; margin-bottom: 24px; border-left: 2px solid #334155; padding-left: 12px;">
+                        <label style="display: block; font-size: 0.8rem; margin-bottom: 4px;">API Base URL</label>
+                        <input type="text" id="ai-base-url" placeholder="http://localhost:11434/v1" style="width: 100%; margin-bottom: 8px; padding: 6px; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid #334155; color: white;">
+                        <label style="display: block; font-size: 0.8rem; margin-bottom: 4px;">Model Name</label>
+                        <input type="text" id="ai-model-name" placeholder="llama3" style="width: 100%; padding: 6px; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid #334155; color: white;">
+                    </div>
 
                     <div class="modal-actions">
                         <button id="cancel-ai-settings-btn" class="btn btn-icon"><i class="fas fa-times"></i> Cancel</button>
@@ -118,12 +134,12 @@
             <div id="ai-modal-overlay" class="modal-overlay hidden">
                 <div class="modal-content">
                     <h3><i class="fas fa-magic" style="color: #ec4899; margin-right: 8px;"></i> Executive AI Assistant</h3>
-                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Describe your goal vaguely. The AI considers your currently pending tasks to generate a prioritized checklist for you.</p>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px;">Describe your goal vaguely. The AI considers your currently pending tasks to generate a prioritized checklist for you. (Runs 100% locally!)</p>
                     <textarea id="ai-prompt-input" rows="3" placeholder="e.g. 'I need to clean the house before guests arrive' or 'Plan a birthday party'"></textarea>
 
                     <div id="ai-status" class="ai-status-container hidden">
                         <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--primary);">
-                            <i class="fas fa-network-wired"></i> <span id="ai-status-text">Connecting to AI Provider...</span>
+                            <i class="fas fa-microchip"></i> <span id="ai-status-text">Loading Model...</span>
                         </div>
                         <div class="progress-bar"><div id="ai-progress" class="progress-fill"></div></div>
                     </div>

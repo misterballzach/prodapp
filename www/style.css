@@ -558,8 +558,8 @@ body {
 }
 
 .modal-content {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background-color: #1e293b;
+    border: 1px solid #334155;
     border-radius: 12px;
     padding: 24px;
     width: 90%;
@@ -577,15 +577,15 @@ body {
 #ai-prompt-input {
     width: 100%;
     background-color: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
+    border: 1px solid #334155;
+    border-radius: 8px;
     padding: 12px;
-    color: var(--text-light);
+    color: #f8fafc;
     font-family: inherit;
     font-size: 0.95rem;
     resize: vertical;
     margin-bottom: 16px;
-    transition: var(--transition);
+    transition: all 0.3s ease;
 }
 
 #ai-prompt-input:focus {
@@ -597,7 +597,7 @@ body {
     margin-bottom: 16px;
     padding: 12px;
     background-color: rgba(236, 72, 153, 0.05);
-    border-radius: var(--border-radius);
+    border-radius: 8px;
     border: 1px solid rgba(236, 72, 153, 0.2);
 }
 

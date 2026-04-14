@@ -1,3 +1,8 @@
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+// Configure transformers.js for browser usage
+env.allowLocalModels = false;
+
 // --- Global State & Configuration ---
 window.appState = {
     currentDate: new Date(),
@@ -73,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveAiSettingsBtn: document.getElementById('save-ai-settings-btn'),
         aiBaseUrlInput: document.getElementById('ai-base-url'),
         aiModelNameInput: document.getElementById('ai-model-name'),
-        aiApiKeyInput: document.getElementById('ai-api-key'),
+        customApiSettingsDiv: document.getElementById('custom-api-settings'),
         calendarGrid: document.getElementById('calendar-grid'),
         monthYearDisplay: document.getElementById('current-month-year'),
         prevMonthBtn: document.getElementById('prev-month'),
@@ -442,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const systemPrompt = "You are a helpful task-breakdown assistant. Output ONLY the steps, each on a new line. No intro, no numbers.";
                     const userPrompt = `Break down the task "${task.title}" into 3 to 5 simple, actionable sub-steps.`;
 
-                    const outputText = await fetchAiCompletion(systemPrompt, userPrompt);
+                    const outputText = await callAi(systemPrompt, userPrompt);
 
                     const splitRegex = outputText.includes('\n') ? /\n/ : /(?<=\.)\s+/;
                     let subs = outputText.split(splitRegex)
@@ -518,12 +523,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
     elements.newTaskInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') elements.addTaskBtn.click(); });
 
-    // --- Remote API AI Logic ---
-    const fetchAiCompletion = async (systemPrompt, userPrompt) => {
-        const aiConfig = JSON.parse(localStorage.getItem('bampot-ai-config') || '{"baseUrl":"http://localhost:11434/v1", "model":"llama3", "apiKey":""}');
+    // --- AI Abstraction Layer ---
+    let aiGenerator = null;
+    let currentLoadedModel = null;
+    let isAiLoading = false;
+
+    const getLocalAiModel = async (modelName) => {
+        if (aiGenerator && currentLoadedModel === modelName) return aiGenerator;
+
+        isAiLoading = true;
+        elements.aiStatus.classList.remove('hidden');
+        elements.runAiBtn.disabled = true;
+
+        const sizeText = modelName.includes('1.8B') ? '~1.2GB' : '~350MB';
+        elements.aiStatusText.innerText = `Downloading Local Model (${sizeText})... This only happens once.`;
+        elements.aiProgress.style.width = "0%";
+
+        try {
+            aiGenerator = await pipeline('text-generation', modelName, {
+                progress_callback: (info) => {
+                    if (info.status === 'progress') {
+                        const progress = (info.loaded / info.total) * 100 || 0;
+                        elements.aiProgress.style.width = `${progress}%`;
+                        elements.aiStatusText.innerText = `Downloading Model: ${Math.round(progress)}%`;
+                    }
+                }
+            });
+            currentLoadedModel = modelName;
+            elements.aiStatusText.innerText = "Model loaded successfully!";
+            elements.aiProgress.style.width = "100%";
+            setTimeout(() => {
+                if(!isAiLoading) elements.aiStatus.classList.add('hidden');
+            }, 2000);
+            return aiGenerator;
+        } catch (err) {
+            console.error("AI Model Load Error:", err);
+            elements.aiStatusText.innerText = err.message.includes('memory') ? "Out of memory! Switch to Fast & Reliable in Settings." : "Failed to load AI model.";
+            elements.aiStatusText.style.color = "#ef4444";
+            throw err;
+        } finally {
+            isAiLoading = false;
+            elements.runAiBtn.disabled = false;
+        }
+    };
+
+    const fetchCustomApiCompletion = async (systemPrompt, userPrompt) => {
+        const baseUrl = localStorage.getItem('bampot-custom-base-url') || 'http://localhost:11434/v1';
+        const model = localStorage.getItem('bampot-custom-model-name') || 'llama3';
 
         const payload = {
-            model: aiConfig.model,
+            model: model,
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
@@ -531,25 +580,37 @@ document.addEventListener('DOMContentLoaded', () => {
             temperature: 0.6
         };
 
-        const headers = {
-            "Content-Type": "application/json"
-        };
-        if (aiConfig.apiKey) {
-            headers["Authorization"] = `Bearer ${aiConfig.apiKey}`;
-        }
-
-        const response = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+        const response = await fetch(`${baseUrl}/chat/completions`, {
             method: "POST",
-            headers: headers,
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+            throw new Error(`API Error: ${response.status}`);
         }
 
         const data = await response.json();
         return data.choices[0].message.content;
+    };
+
+    const callAi = async (systemPrompt, userPrompt) => {
+        const modelChoice = localStorage.getItem('bampot-local-model') || 'Xenova/Qwen1.5-0.5B-Chat';
+
+        if (modelChoice === 'custom-api') {
+            return await fetchCustomApiCompletion(systemPrompt, userPrompt);
+        } else {
+            const generator = await getLocalAiModel(modelChoice);
+            const structuredPrompt = `<|im_start|>system\n${systemPrompt}<|im_end|>\n<|im_start|>user\n${userPrompt}<|im_end|>\n<|im_start|>assistant\n`;
+
+            const result = await generator(structuredPrompt, {
+                max_new_tokens: 150,
+                temperature: 0.6,
+                do_sample: true,
+                return_full_text: false
+            });
+            return result[0].generated_text;
+        }
     };
 
     const generateAiTasks = async () => {
@@ -563,16 +624,19 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.runAiBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
 
         try {
+            elements.aiStatusText.innerText = "Thinking...";
+            elements.aiProgress.style.width = "50%";
+
             // Gather context of unfinished tasks
             const unfinishedTasks = state.tasks
                 .filter(t => !t.completed && t.date <= formatDate(state.selectedDate))
                 .map(t => t.title)
                 .join(', ');
 
-            const systemPrompt = "You are a highly capable executive assistant. Your job is to output ONLY simple, actionable checklist items based on the user request. Put each item on a new line. Do not include introductory text, numbers, or bullet characters.";
+            const systemPrompt = 'You are a highly capable executive assistant. Your job is to output ONLY simple, actionable checklist items based on the user request. Put each item on a new line. Do not include introductory text, numbers, or bullet characters.';
             const userPrompt = `My goal is: "${prompt}". My current pending tasks are: [${unfinishedTasks}]. Create a prioritized checklist for me.`;
 
-            const outputText = await fetchAiCompletion(systemPrompt, userPrompt);
+            const outputText = await callAi(systemPrompt, userPrompt);
             elements.aiProgress.style.width = "100%";
 
             // Parse the output
@@ -640,13 +704,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // AI Settings Listeners
     if (elements.openAiSettingsBtn) {
         elements.openAiSettingsBtn.addEventListener('click', () => {
-            const aiConfig = JSON.parse(localStorage.getItem('bampot-ai-config') || '{"baseUrl":"http://localhost:11434/v1", "model":"llama3", "apiKey":""}');
-            elements.aiBaseUrlInput.value = aiConfig.baseUrl;
-            elements.aiModelNameInput.value = aiConfig.model;
-            elements.aiApiKeyInput.value = aiConfig.apiKey;
+            const currentModel = localStorage.getItem('bampot-local-model') || 'Xenova/Qwen1.5-0.5B-Chat';
+            const radio = document.querySelector(`input[name="ai-model-choice"][value="${currentModel}"]`);
+            if (radio) {
+                radio.checked = true;
+            } else {
+                document.querySelector(`input[name="ai-model-choice"][value="custom-api"]`).checked = true;
+            }
+
+            elements.aiBaseUrlInput.value = localStorage.getItem('bampot-custom-base-url') || 'http://localhost:11434/v1';
+            elements.aiModelNameInput.value = localStorage.getItem('bampot-custom-model-name') || 'llama3';
+
+            elements.customApiSettingsDiv.style.opacity = document.querySelector('input[name="ai-model-choice"]:checked').value === 'custom-api' ? '1' : '0.5';
+
             elements.aiSettingsModal.classList.remove('hidden');
         });
     }
+
+    document.querySelectorAll('input[name="ai-model-choice"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            elements.customApiSettingsDiv.style.opacity = e.target.value === 'custom-api' ? '1' : '0.5';
+        });
+    });
 
     if (elements.cancelAiSettingsBtn) {
         elements.cancelAiSettingsBtn.addEventListener('click', () => {
@@ -656,12 +735,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (elements.saveAiSettingsBtn) {
         elements.saveAiSettingsBtn.addEventListener('click', () => {
-            const config = {
-                baseUrl: elements.aiBaseUrlInput.value.trim().replace(/\/$/, ''),
-                model: elements.aiModelNameInput.value.trim(),
-                apiKey: elements.aiApiKeyInput.value.trim()
-            };
-            localStorage.setItem('bampot-ai-config', JSON.stringify(config));
+            const selectedModel = document.querySelector('input[name="ai-model-choice"]:checked').value;
+
+            if (selectedModel === 'custom-api') {
+                localStorage.setItem('bampot-custom-base-url', elements.aiBaseUrlInput.value.trim().replace(/\/$/, ''));
+                localStorage.setItem('bampot-custom-model-name', elements.aiModelNameInput.value.trim());
+            }
+
+            if (selectedModel !== currentLoadedModel) {
+                aiGenerator = null;
+                currentLoadedModel = null;
+            }
+
+            localStorage.setItem('bampot-local-model', selectedModel);
             elements.aiSettingsModal.classList.add('hidden');
         });
     }
